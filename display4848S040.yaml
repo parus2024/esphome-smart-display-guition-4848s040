@@ -2,7 +2,7 @@ substitutions:
   name: display
   friendly_name: display
   friendly_name_short: display
-  version: '28.11.2025'
+  version: '20.10.2026'
   device_ip: 192.168.0.92
   reboot_timeout: 30min
 packages:
