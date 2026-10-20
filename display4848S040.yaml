@@ -1,0 +1,283 @@
+substitutions:
+  name: display
+  friendly_name: display
+  friendly_name_short: display
+  version: '28.11.2025'
+  device_ip: 192.168.0.92
+  reboot_timeout: 30min
+packages:
+  home: !include widgets/home_widget.yaml
+  lights_config: !include widgets/light/lights_config.yaml
+  devices: !include widgets/devices.yaml
+  settings: !include widgets/settings.yaml
+  menu_controls_main: !include widgets/menu_controls_main.yaml
+  loading_page: !include widgets/loading_page.yaml
+#  common: !include attach/packages/standart.yaml
+logger:
+  level: INFO #DEBUG
+#<<: !include attach/common/logger/debug.yaml
+<<: !include attach/common/api.yaml
+<<: !include attach/common/ota.yaml
+<<: !include attach/common/wifi.yaml
+#<<: !include attach/common/web/web_server3.yaml
+
+image: !include widgets/image.yaml
+font: !include widgets/fonts.yaml
+color: !include widgets/colors.yaml
+
+#http_request:
+#  verify_ssl: false
+
+preferences:
+  flash_write_interval: 10min
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  includes:
+    - <sstream>
+    - <algorithm>
+  ##build_flags: #"-DBOARD_HAS_PSRAM"
+  ##  - -DBOARD_HAS_PSRAM
+  ##  - -mlongcalls               # разрешает дальние вызовы функций
+  ##  - -mtext-section-literals
+  ##  - -Os                     # оптимизация размера кода
+  ##  - -fdata-sections
+  ##  - -ffunction-sections
+  ##  - -Wl,--gc-sections       # удаляет неиспользуемые секции
+#    - -Wl,-Tesp32_out.ld # Явно укажите линкерный скрипт для ESP32
+#    - -Wl,-z,max-page-size=0x1000
+#    - -Wl,--relax
+##  platformio_options:
+#    board_build.arduino.memory_type: qio_opi
+##    build_flags:
+##      - -mtext-section-literals
+##      - -mlongcalls
+#    board_upload.maximum_ram_size: 524288
+
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  flash_size: 16MB
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_ESP32S3_DEFAULT_CPU_FREQ_240: y
+##      CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP: n # запретим WiFi использовать PSRAM для своих нужд
+      # CONFIG_ESP_MAIN_TASK_STACK_SIZE: 8192
+      #CONFIG_ESP32S3_DATA_CACHE_64KB: "y"
+      #CONFIG_ESP32S3_DATA_CACHE_LINE_64B: "y"
+      #CONFIG_SPIRAM_FETCH_INSTRUCTIONS: y
+      #CONFIG_SPIRAM_RODATA: y
+      # CONFIG_FREERTOS_USE_TRACE_FACILITY: "y"
+      # CONFIG_FREERTOS_USE_STATS_FORMATTING_FUNCTIONS: "y"
+      # Включаем PSRAM как часть кучи
+##      CONFIG_SPIRAM_USE_MALLOC: y                # malloc() использует PSRAM
+##      CONFIG_SPIRAM_USE_CAPS_ALLOC: y          # heap_caps_malloc() с флагами
+##      CONFIG_SPIRAM_MEMTEST: y                  # тест PSRAM при старте
+##      CONFIG_SPIRAM_INIT_AUTO: y              # автоинициализация PSRAM
+##      CONFIG_SPIRAM_ALLOW_BSS_SEG_EXTERNAL: y   # BSS в PSRAM (осторожно!)
+##      CONFIG_SPIRAM_ALLOW_STACK: n              # НЕ разрешаем стеки в PSRAM (рискованно)
+##      CONFIG_SPIRAM_ALLOW_MALLOC: y             # malloc() видит PSRAM
+##      CONFIG_COMPILER_OPTIMIZATION_PERF: "y"
+
+psram:
+  mode: octal
+  speed: 80MHz
+
+lvgl:
+#  buffer_size: 10%
+  color_depth: 16
+  byte_order: big_endian
+  displays: my_display
+  touchscreens:
+    - touchscreen_id: my_touchscreen
+      long_press_time: 3000ms
+      long_press_repeat_time: 400ms
+  page_wrap: false
+
+light:
+  # Backlight
+  - platform: monochromatic
+    output: backlight_output
+    name: Backlight
+    id: display_backlight
+    restore_mode: ALWAYS_ON
+    on_turn_on:
+      - if:
+          condition: lvgl.is_paused
+          then:
+            - logger.log: "LVGL resuming by backlight on"
+            - lvgl.resume:
+            - lvgl.widget.redraw:
+    on_turn_off:
+      - if:
+          condition:
+            lambda: 'return id(display_timeout_number).state >= 0;'
+          then:
+            - logger.log: "Backlight off, pausing LVGL"
+            - lvgl.pause:
+
+output:
+    # Backlight LED
+  - platform: ledc
+    pin: GPIO38
+    id: backlight_output
+    frequency: 100Hz
+
+i2c:
+  - id: bus_a
+    sda: GPIO19
+    scl:
+      number: GPIO45
+      ignore_strapping_warning: true
+    frequency: 100kHz
+
+touchscreen:
+  platform: gt911
+  id: my_touchscreen
+  transform:
+    mirror_x: false
+    mirror_y: false
+  display: my_display
+  on_release:
+      - if:
+          condition: lvgl.is_paused
+          then:
+            - logger.log: "LVGL resuming"
+            - lvgl.resume:
+            - lvgl.widget.redraw:
+            - light.turn_on: display_backlight
+  # on_touch:
+  #   - lambda: |-
+  #         ESP_LOGI("cal", "x=%d, y=%d, x_raw=%d, y_raw=%0d",
+  #             touch.x,
+  #             touch.y,
+  #             touch.x_raw,
+  #             touch.y_raw
+  #             );
+
+spi:
+  - id: lcd_spi
+    clk_pin: GPIO48
+    mosi_pin: GPIO47
+    
+display:
+  - platform: st7701s
+    id: my_display
+    update_interval: never
+    auto_clear_enabled: false
+    data_rate: 20MHz
+    spi_mode: MODE3
+    color_order: RGB
+    invert_colors: false
+    dimensions:
+      width: 480
+      height: 480
+    transform:
+      mirror_x: false
+      mirror_y: false
+    cs_pin: 39
+      # reset not defined 
+    de_pin: 18
+    hsync_pin: 16
+    vsync_pin: 17
+    pclk_pin: 21
+    init_sequence: 
+      - 1
+      - [0xFF, 0x77, 0x01, 0x00, 0x00, 0x10] # CMD2_BKSEL_BK0
+      - [0xCD, 0x00] # disable MDT flag
+    pclk_frequency: 12MHz
+    pclk_inverted: false
+    data_pins:
+      red:
+        - 11         # R1
+        - 12         # R2
+        - 13         # R3
+        - 14         # R4
+        - 0          # R5
+      green:
+        - 8          # G0
+        - 20         # G1
+        - 3          # G2
+        - 46         # G3
+        - 9          # G4
+        - 10         # G5 
+      blue:
+        - 4          # B1
+        - 5          # B2
+        - 6          # B3
+        - 7          # B4
+        - 15         # B5
+debug:
+  update_interval: 60s
+# Example configuration entry
+button:
+  # Restart
+  - !include attach/common/button/restart.yaml
+  # Restart Safe Mode
+  - !include attach/common/button/restart_safe.yaml
+  - platform: factory_reset
+    name: Restart with Factory Default Settings
+sensor:
+  - !include attach/common/sensor/uptime.yaml
+  - !include attach/common/sensor/wifi_signal_db.yaml
+#  - !include attach/common/sensor/wifi_signal%.yaml
+  - platform: debug
+    free:
+      name: "Heap Free"
+    block:
+      name: "Heap Max Block"
+    loop_time:
+      name: "Loop Time"
+    psram:
+      name: "Free PSRAM"
+binary_sensor:
+  # ESP Status
+  - !include attach/common/binary_sensor/status.yaml
+
+text_sensor:
+  # ESPHome Version
+  - !include attach/common/text_sensor/version.yaml
+  # IP
+  - !include attach/common/text_sensor/ip.yaml
+
+# interval:
+#   - interval: 60s
+#     then:
+#       - lambda: |-
+#           // Общая информация о памяти
+#           ESP_LOGI("memory", "Free heap: %d bytes", esp_get_free_heap_size());
+#           ESP_LOGI("memory", "Free internal heap: %d bytes", esp_get_free_internal_heap_size());
+#           ESP_LOGI("memory", "Min free heap: %d bytes", esp_get_minimum_free_heap_size());
+          
+#           // Детальная статистика кучи
+#           multi_heap_info_t info;
+#           heap_caps_get_info(&info, MALLOC_CAP_INTERNAL);
+#           ESP_LOGI("memory", "SRAM total: %d, free: %d, largest_free: %d", 
+#                    info.total_free_bytes + info.total_allocated_bytes,
+#                    info.total_free_bytes, 
+#                    info.largest_free_block);
+          
+#           // Статистика по PSRAM
+#           heap_caps_get_info(&info, MALLOC_CAP_SPIRAM);
+#           ESP_LOGI("memory", "PSRAM total: %d, free: %d, largest_free: %d", 
+#                    info.total_free_bytes + info.total_allocated_bytes,
+#                    info.total_free_bytes, 
+#                    info.largest_free_block);
+
+#       - lambda: |-
+#           ESP_LOGI("stack", "Main task free: %d bytes", 
+#                    uxTaskGetStackHighWaterMark(xTaskGetHandle("loopTask")));
+#           ESP_LOGI("stack", "System event free: %d bytes", 
+#                    uxTaskGetStackHighWaterMark(xTaskGetHandle("sys_evt")));
+#           ESP_LOGI("stack", "Timer task free: %d bytes", 
+#                    uxTaskGetStackHighWaterMark(xTaskGetHandle("esp_timer")));
+
+#       - lambda: |-
+#           char* buf = (char*)malloc(1024);
+#           if (buf) {
+#             vTaskList(buf);
+#             ESP_LOGI("stack", "\nTask Name\tState\tPrio\tStack\tNum\n%s", buf);
+#             free(buf);
+#           }
