@@ -1,5 +1,5 @@
 # ParusSmart Display: Сенсорная панель Guition 4848S040 для управления Home Assistant.
-![внешний вид](display4848s040.jpg)
+![внешний вид](display4848s040.png)
 ## 🌟 Описание проекта
 
 **ParusSmart Display** — это проект локальной сенсорной панели управления умным домом на базе **Guition 4848S040 (ESP32-S3)** и библиотеки **LVGL**. Устройство подключается к Home Assistant через нативный API ESPHome, обеспечивая мгновенный отклик, красивый интерфейс и полную автономность без облачных сервисов.
@@ -64,7 +64,7 @@
 
 ### 2. Структура проекта
 Проект использует модульную структуру с подключением пакетов (packages). Убедитесь, что файлы виджетов и шаблонов находятся в правильных директориях:
-
+Здесь находятся [все необходимые пакеты packages](https://github.com/parus2024/esphome-config)
 ```yaml
 packages:
   standart: !include attach/packages/standart.yaml
@@ -100,7 +100,7 @@ packages:
 
 ## 🎨 Скриншоты
 - [yaml файл прошивки](display4848s040.yaml)
-- [фото](display4848s040.jpg)
+- [фото](display4848s040.png)
 - [Видео YOUTUBE](https://youtu.be/ei42v6LXtFc)
 - [Видео RUTUBE](https://rutube.ru/video/private/83ed974864d39b4bd82929ae70685d58/?p=TIdEhhGhczeFOnzmgfgk5Q)
 ## ⚠️ Известные ограничения и решения
