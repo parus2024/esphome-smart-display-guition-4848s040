@@ -64,7 +64,7 @@
 
 ### 2. Структура проекта
 Проект использует модульную структуру с подключением пакетов (packages). Убедитесь, что файлы виджетов и шаблонов находятся в правильных директориях:
-Здесь находятся [все необходимые пакеты packages](https://github.com/parus2024/esphome-config)
+Здесь находятся [все необходимые пакеты packages](https://github.com/parus2024/esphome-config/tree/main/widgets)
 ```yaml
 packages:
   standart: !include attach/packages/standart.yaml
