@@ -1,0 +1,13 @@
+secrets.yaml
+**/secrets.yaml
+
+.esphome/
+**/.esphome/
+.pio/
+**/.pio/
+
+*.bin
+*.elf
+*.map
+
+*.log
